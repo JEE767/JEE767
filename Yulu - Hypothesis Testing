@@ -1,0 +1,79 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+
+# Load the dataset
+df = pd.read_csv('yulu_data.csv')
+
+# Display the first few rows of the dataset
+print(df.head())
+
+# Data types and missing values
+print(df.info())
+
+# Summary statistics
+print(df.describe())
+
+# Univariate Analysis
+plt.figure(figsize=(15, 10))
+plt.subplot(2, 2, 1)
+sns.histplot(df['temp'], kde=True)
+plt.title('Temperature Distribution')
+
+plt.subplot(2, 2, 2)
+sns.histplot(df['atemp'], kde=True)
+plt.title('Feeling Temperature Distribution')
+
+plt.subplot(2, 2, 3)
+sns.histplot(df['humidity'], kde=True)
+plt.title('Humidity Distribution')
+
+plt.subplot(2, 2, 4)
+sns.histplot(df['windspeed'], kde=True)
+plt.title('Wind Speed Distribution')
+
+plt.show()
+
+# Bivariate Analysis
+plt.figure(figsize=(15, 5))
+sns.boxplot(x='workingday', y='count', data=df)
+plt.title('Count vs Working Day')
+plt.show()
+
+plt.figure(figsize=(15, 5))
+sns.boxplot(x='season', y='count', data=df)
+plt.title('Count vs Season')
+plt.show()
+
+plt.figure(figsize=(15, 5))
+sns.boxplot(x='weather', y='count', data=df)
+plt.title('Count vs Weather')
+plt.show()
+
+# 2-Sample T-Test
+workingday_count = df[df['workingday'] == 1]['count']
+non_workingday_count = df[df['workingday'] == 0]['count']
+
+t_stat, p_value = stats.ttest_ind(workingday_count, non_workingday_count)
+print(f'T-statistic: {t_stat}, P-value: {p_value}')
+
+# ANOVA for Season and Count
+anova_season = stats.f_oneway(df[df['season'] == 1]['count'],
+                              df[df['season'] == 2]['count'],
+                              df[df['season'] == 3]['count'],
+                              df[df['season'] == 4]['count'])
+print(f'ANOVA Season: F-statistic: {anova_season.statistic}, P-value: {anova_season.pvalue}')
+
+# ANOVA for Weather and Count
+anova_weather = stats.f_oneway(df[df['weather'] == 1]['count'],
+                               df[df['weather'] == 2]['count'],
+                               df[df['weather'] == 3]['count'],
+                               df[df['weather'] == 4]['count'])
+print(f'ANOVA Weather: F-statistic: {anova_weather.statistic}, P-value: {anova_weather.pvalue}')
+
+# Chi-square test for Weather and Season
+contingency_table = pd.crosstab(df['weather'], df['season'])
+chi2_stat, p_val, dof, ex = stats.chi2_contingency(contingency_table)
+print(f'Chi-square test: Chi2-statistic: {chi2_stat}, P-value: {p_val}')
