@@ -1,0 +1,99 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy import stats
+
+# Load the dataset
+df = pd.read_csv('Walmart_data.csv')
+
+# Display basic information and summary statistics
+print(df.info())
+print(df.describe())
+
+# Check for null values
+print(df.isnull().sum())
+
+# Detect and visualize outliers
+sns.boxplot(x='Purchase', data=df)
+plt.title('Boxplot of Purchase Amount')
+plt.show()
+
+# Analyze average spending by gender
+gender_avg = df.groupby('Gender')['Purchase'].mean()
+print('Average Purchase by Gender:\n', gender_avg)
+
+# Function to calculate confidence interval
+def calculate_confidence_interval(data, confidence=0.95):
+    mean = np.mean(data)
+    sem = stats.sem(data)
+    margin_of_error = sem * stats.t.ppf((1 + confidence) / 2., len(data) - 1)
+    return mean - margin_of_error, mean + margin_of_error
+
+# Calculate confidence intervals for spending by gender
+male_data = df[df['Gender'] == 'Male']['Purchase']
+female_data = df[df['Gender'] == 'Female']['Purchase']
+
+male_ci = calculate_confidence_interval(male_data)
+female_ci = calculate_confidence_interval(female_data)
+
+print(f"Male Confidence Interval: {male_ci}")
+print(f"Female Confidence Interval: {female_ci}")
+
+# Visualization of spending distribution by gender
+sns.histplot(df[df['Gender'] == 'Male']['Purchase'], kde=True, label='Male', color='blue')
+sns.histplot(df[df['Gender'] == 'Female']['Purchase'], kde=True, label='Female', color='pink')
+plt.legend()
+plt.title('Distribution of Purchase Amount by Gender')
+plt.show()
+
+# Analysis for Married vs Unmarried
+marital_avg = df.groupby('Marital_Status')['Purchase'].mean()
+print('Average Purchase by Marital Status:\n', marital_avg)
+
+# Calculate confidence intervals for spending by marital status
+married_data = df[df['Marital_Status'] == 1]['Purchase']
+unmarried_data = df[df['Marital_Status'] == 0]['Purchase']
+
+married_ci = calculate_confidence_interval(married_data)
+unmarried_ci = calculate_confidence_interval(unmarried_data)
+
+print(f"Married Confidence Interval: {married_ci}")
+print(f"Unmarried Confidence Interval: {unmarried_ci}")
+
+# Visualization of spending distribution by marital status
+sns.histplot(df[df['Marital_Status'] == 1]['Purchase'], kde=True, label='Married', color='green')
+sns.histplot(df[df['Marital_Status'] == 0]['Purchase'], kde=True, label='Unmarried', color='red')
+plt.legend()
+plt.title('Distribution of Purchase Amount by Marital Status')
+plt.show()
+
+# Analysis for Age Groups
+age_bins = [0, 17, 25, 35, 50, np.inf]
+age_labels = ['0-17', '18-25', '26-35', '36-50', '51+']
+df['Age_Group'] = pd.cut(df['Age'], bins=age_bins, labels=age_labels)
+
+age_avg = df.groupby('Age_Group')['Purchase'].mean()
+print('Average Purchase by Age Group:\n', age_avg)
+
+# Calculate confidence intervals for spending by age group
+for age_group in age_labels:
+    age_group_data = df[df['Age_Group'] == age_group]['Purchase']
+    ci = calculate_confidence_interval(age_group_data)
+    print(f"{age_group} Confidence Interval: {ci}")
+
+# Visualization of spending distribution by age group
+for age_group in age_labels:
+    sns.histplot(df[df['Age_Group'] == age_group]['Purchase'], kde=True, label=age_group)
+
+plt.legend()
+plt.title('Distribution of Purchase Amount by Age Group')
+plt.show()
+
+# Recommendations
+print("""
+Recommendations:
+1. If women spend more on Black Friday, consider targeted promotions for female customers.
+2. For marital status, if married customers spend significantly more, focus on family-oriented promotions.
+3. For age groups, tailor marketing strategies according to the spending habits of each age group.
+""")
