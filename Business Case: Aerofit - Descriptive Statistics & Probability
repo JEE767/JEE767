@@ -1,0 +1,135 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy.stats import chi2_contingency
+
+# Load the dataset
+url = 'path_to/Aerofit_treadmill.csv'
+df = pd.read_csv(url)
+
+# Initial analysis
+print(df.head())
+print(df.info())
+print(df.describe())
+
+# Detecting outliers using boxplot
+plt.figure(figsize=(12, 6))
+sns.boxplot(data=df)
+plt.title('Boxplot for Detecting Outliers')
+plt.show()
+
+# Checking the distribution of features
+plt.figure(figsize=(15, 10))
+
+# Age
+plt.subplot(2, 3, 1)
+sns.histplot(df['Age'], bins=20, kde=True)
+plt.title('Age Distribution')
+
+# Gender
+plt.subplot(2, 3, 2)
+sns.countplot(x='Gender', data=df)
+plt.title('Gender Distribution')
+
+# Education
+plt.subplot(2, 3, 3)
+sns.histplot(df['Education'], bins=10, kde=True)
+plt.title('Education Distribution')
+
+# Marital Status
+plt.subplot(2, 3, 4)
+sns.countplot(x='MaritalStatus', data=df)
+plt.title('Marital Status Distribution')
+
+# Income
+plt.subplot(2, 3, 5)
+sns.histplot(df['Income'], bins=20, kde=True)
+plt.title('Income Distribution')
+
+# Fitness
+plt.subplot(2, 3, 6)
+sns.histplot(df['Fitness'], bins=5, kde=True)
+plt.title('Fitness Distribution')
+
+plt.tight_layout()
+plt.show()
+
+# Effect of features on product purchased
+plt.figure(figsize=(15, 10))
+
+# Age vs Product Purchased
+plt.subplot(2, 3, 1)
+sns.boxplot(x='Product', y='Age', data=df)
+plt.title('Age vs Product Purchased')
+
+# Gender vs Product Purchased
+plt.subplot(2, 3, 2)
+sns.countplot(x='Product', hue='Gender', data=df)
+plt.title('Gender vs Product Purchased')
+
+# Education vs Product Purchased
+plt.subplot(2, 3, 3)
+sns.boxplot(x='Product', y='Education', data=df)
+plt.title('Education vs Product Purchased')
+
+# Marital Status vs Product Purchased
+plt.subplot(2, 3, 4)
+sns.countplot(x='Product', hue='MaritalStatus', data=df)
+plt.title('Marital Status vs Product Purchased')
+
+# Income vs Product Purchased
+plt.subplot(2, 3, 5)
+sns.boxplot(x='Product', y='Income', data=df)
+plt.title('Income vs Product Purchased')
+
+# Fitness vs Product Purchased
+plt.subplot(2, 3, 6)
+sns.boxplot(x='Product', y='Fitness', data=df)
+plt.title('Fitness vs Product Purchased')
+
+plt.tight_layout()
+plt.show()
+
+# Marginal probabilities
+product_counts = df['Product'].value_counts(normalize=True) * 100
+print(product_counts)
+
+# Correlation matrix
+plt.figure(figsize=(12, 6))
+sns.heatmap(df.corr(), annot=True, cmap='coolwarm')
+plt.title('Correlation Matrix')
+plt.show()
+
+# Customer Profiling
+customer_profile = df.groupby('Product').agg({
+    'Age': ['mean', 'median'],
+    'Gender': lambda x: x.value_counts().index[0],
+    'Education': ['mean', 'median'],
+    'MaritalStatus': lambda x: x.value_counts().index[0],
+    'Usage': ['mean', 'median'],
+    'Income': ['mean', 'median'],
+    'Fitness': ['mean', 'median'],
+    'Miles': ['mean', 'median']
+})
+print(customer_profile)
+
+# Probability calculations
+# Conditional probability: P(Product | Gender)
+gender_product = pd.crosstab(df['Gender'], df['Product'], normalize='index')
+print(gender_product)
+
+# Example probability: P(KP781 | Male)
+p_kp781_given_male = gender_product.loc['Male', 'KP781']
+print(f"Probability of a male customer buying a KP781 treadmill: {p_kp781_given_male:.2%}")
+
+# Recommendations and actionable insights
+recommendations = """
+1. **Targeted Marketing**: KP281 can be marketed towards younger customers with lower income, while KP781 should be marketed towards older, high-income customers.
+2. **Promotions**: Introduce special promotions for females to increase sales of KP481, where there is a noticeable gap.
+3. **Product Features**: Highlight the advanced features of KP781 in marketing campaigns targeting highly fit individuals.
+4. **Retail Strategies**: Store locations in areas with high-income demographics should focus on stocking more KP781 treadmills.
+5. **Customer Service**: Provide tailored customer support based on the typical user profile of each treadmill product.
+"""
+print(recommendations)
