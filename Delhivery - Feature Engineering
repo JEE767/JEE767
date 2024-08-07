@@ -1,0 +1,58 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import ttest_ind
+from sklearn.preprocessing import MinMaxScaler
+
+# Load Dataset
+df = pd.read_csv('delhivery_data.csv')
+
+# Handle Missing Values
+df = df.dropna()
+
+# Extract Features from trip_creation_time
+df['trip_creation_time'] = pd.to_datetime(df['trip_creation_time'])
+df['month'] = df['trip_creation_time'].dt.month
+df['year'] = df['trip_creation_time'].dt.year
+df['day'] = df['trip_creation_time'].dt.day
+
+# Calculate od_duration
+df['od_start_time'] = pd.to_datetime(df['od_start_time'])
+df['od_end_time'] = pd.to_datetime(df['od_end_time'])
+df['od_duration'] = (df['od_end_time'] - df['od_start_time']).dt.total_seconds() / 3600
+
+# Compare od_duration with start_scan_to_end_scan
+df['scan_duration_diff'] = df['od_duration'] - df['start_scan_to_end_scan']
+
+# Aggregate Fields by trip_uuid
+df_agg = df.groupby('trip_uuid').agg({
+    'actual_distance_to_destination': 'sum',
+    'actual_time': 'sum',
+    'osrm_time': 'sum',
+    'osrm_distance': 'sum',
+    'segment_actual_time': 'sum',
+    'segment_osrm_time': 'sum',
+    'segment_osrm_distance': 'sum'
+}).reset_index()
+
+# Hypothesis Testing
+t_stat, p_value = ttest_ind(df_agg['actual_time'], df_agg['osrm_time'])
+print(f'T-test: t_stat={t_stat}, p_value={p_value}')
+
+# Visual Analysis
+sns.scatterplot(x='actual_time', y='osrm_time', data=df_agg)
+plt.title('Actual Time vs OSRM Time')
+plt.show()
+
+# Handle Outliers using IQR
+Q1 = df_agg.quantile(0.25)
+Q3 = df_agg.quantile(0.75)
+IQR = Q3 - Q1
+df_agg_outliers_removed = df_agg[~((df_agg < (Q1 - 1.5 * IQR)) | (df_agg > (Q3 + 1.5 * IQR))).any(axis=1)]
+
+# One-Hot Encode route_type
+df_agg = pd.get_dummies(df_agg, columns=['route_type'], drop_first=True)
+
+# Normalize Numerical Features
+scaler = MinMaxScaler()
+df_agg_scaled = pd.DataFrame(scaler.fit_transform(df_agg), columns=df_agg.columns)
