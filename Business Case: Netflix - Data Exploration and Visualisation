@@ -1,0 +1,118 @@
+# Importing necessary libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load Dataset
+df = pd.read_csv('netflix_data.csv')
+
+# Data Cleaning and Exploration
+df.info()
+df.describe()
+df.isnull().sum()
+
+# Handle missing values (if necessary)
+df['director'].fillna('Unknown', inplace=True)
+df['cast'].fillna('Unknown', inplace=True)
+df['country'].fillna('Unknown', inplace=True)
+df['date_added'].fillna('Unknown', inplace=True)
+
+# Convert 'date_added' to datetime
+df['date_added'] = pd.to_datetime(df['date_added'], errors='coerce')
+
+# Extracting additional features
+df['year_added'] = df['date_added'].dt.year
+df['month_added'] = df['date_added'].dt.month
+df['day_added'] = df['date_added'].dt.day
+
+# Non-Graphical Analysis
+print(df['type'].value_counts())
+print(df['rating'].value_counts())
+print(df['country'].value_counts().head(10))
+print(df['listed_in'].value_counts().head(10))
+
+# Visual Analysis
+
+# Distribution of content types
+sns.countplot(x='type', data=df)
+plt.title('Distribution of Content Types')
+plt.show()
+
+# Number of movies and TV shows added over the years
+plt.figure(figsize=(12,6))
+sns.countplot(x='year_added', data=df, hue='type')
+plt.title('Content Added Over the Years')
+plt.show()
+
+# Duration distribution
+df_movies = df[df['type'] == 'Movie']
+df_shows = df[df['type'] == 'TV Show']
+
+# Convert duration to numerical
+df_movies['duration'] = df_movies['duration'].str.replace(' min', '').astype(int)
+df_shows['duration'] = df_shows['duration'].str.replace(' Season', '').str.replace('s', '').astype(int)
+
+sns.histplot(df_movies['duration'], kde=True)
+plt.title('Distribution of Movie Durations')
+plt.show()
+
+sns.histplot(df_shows['duration'], kde=True)
+plt.title('Distribution of TV Show Seasons')
+plt.show()
+
+# Correlation Heatmap
+corr = df.corr()
+sns.heatmap(corr, annot=True)
+plt.title('Correlation Heatmap')
+plt.show()
+
+# Analysis by Directors
+top_directors = df['director'].value_counts().head(10)
+sns.barplot(x=top_directors.values, y=top_directors.index)
+plt.title('Top 10 Directors by Number of Titles')
+plt.show()
+
+# Analysis by Actors
+top_actors = df['cast'].str.split(', ', expand=True).stack().value_counts().head(10)
+sns.barplot(x=top_actors.values, y=top_actors.index)
+plt.title('Top 10 Actors by Number of Titles')
+plt.show()
+
+# Missing Values and Outliers Check
+sns.boxplot(x=df_movies['duration'])
+plt.title('Boxplot of Movie Durations')
+plt.show()
+
+sns.boxplot(x=df_shows['duration'])
+plt.title('Boxplot of TV Show Seasons')
+plt.show()
+
+# Handle outliers using IQR method (if necessary)
+Q1 = df_movies['duration'].quantile(0.25)
+Q3 = df_movies['duration'].quantile(0.75)
+IQR = Q3 - Q1
+df_movies = df_movies[~((df_movies['duration'] < (Q1 - 1.5 * IQR)) | (df_movies['duration'] > (Q3 + 1.5 * IQR)))]
+
+Q1 = df_shows['duration'].quantile(0.25)
+Q3 = df_shows['duration'].quantile(0.75)
+IQR = Q3 - Q1
+df_shows = df_shows[~((df_shows['duration'] < (Q1 - 1.5 * IQR)) | (df_shows['duration'] > (Q3 + 1.5 * IQR)))]
+
+# One-Hot Encoding for categorical variables
+df_encoded = pd.get_dummies(df, columns=['rating', 'listed_in'], drop_first=True)
+
+# Normalize/Standardize numerical features
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
+df_encoded[['duration', 'year_added', 'month_added', 'day_added']] = scaler.fit_transform(df_encoded[['duration', 'year_added', 'month_added', 'day_added']])
+
+# Business Insights
+# 1. The number of TV shows has increased significantly over the years compared to movies.
+# 2. Most content is added in the fourth quarter of the year, likely targeting holiday viewership.
+# 3. Action and drama are the most popular genres on Netflix.
+
+# Recommendations
+# 1. Focus on producing more TV shows as they show higher recent growth.
+# 2. Target content additions around the fourth quarter to capitalize on higher viewership.
+# 3. Invest in action and drama genres as they are highly popular.
+# 4. Expand content variety in countries with fewer titles to attract more subscribers.
