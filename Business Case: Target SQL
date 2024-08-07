@@ -1,0 +1,145 @@
+-- Initial Data Exploration
+
+-- Determine the data types of all columns in the "customers" table
+PRAGMA table_info(customers);
+
+-- Identify the time range of the order placements
+SELECT MIN(order_purchase_timestamp) AS first_order, MAX(order_purchase_timestamp) AS last_order
+FROM orders;
+
+-- Count the cities and states of customers who placed orders during the given period
+SELECT customer_city, customer_state, COUNT(*) AS order_count
+FROM customers
+JOIN orders ON customers.customer_id = orders.customer_id
+GROUP BY customer_city, customer_state;
+
+-- In-depth Exploration
+
+-- Identify trends in the number of orders placed over the past years
+SELECT strftime('%Y', order_purchase_timestamp) AS order_year, COUNT(*) AS order_count
+FROM orders
+GROUP BY order_year
+ORDER BY order_year;
+
+-- Detect monthly seasonality in the number of orders
+SELECT strftime('%Y-%m', order_purchase_timestamp) AS order_month, COUNT(*) AS order_count
+FROM orders
+GROUP BY order_month
+ORDER BY order_month;
+
+-- Determine the time of day Brazilian customers mostly place their orders
+SELECT 
+    CASE
+        WHEN strftime('%H', order_purchase_timestamp) BETWEEN '00' AND '06' THEN 'Dawn'
+        WHEN strftime('%H', order_purchase_timestamp) BETWEEN '07' AND '12' THEN 'Morning'
+        WHEN strftime('%H', order_purchase_timestamp) BETWEEN '13' AND '18' THEN 'Afternoon'
+        WHEN strftime('%H', order_purchase_timestamp) BETWEEN '19' AND '23' THEN 'Night'
+    END AS time_of_day,
+    COUNT(*) AS order_count
+FROM orders
+GROUP BY time_of_day
+ORDER BY time_of_day;
+
+-- Evolution of E-commerce orders in Brazil
+
+-- Get the month-on-month number of orders placed in each state
+SELECT strftime('%Y-%m', order_purchase_timestamp) AS order_month, customer_state, COUNT(*) AS order_count
+FROM orders
+JOIN customers ON orders.customer_id = customers.customer_id
+GROUP BY order_month, customer_state
+ORDER BY order_month, customer_state;
+
+-- Analyze customer distribution across states
+SELECT customer_state, COUNT(*) AS customer_count
+FROM customers
+GROUP BY customer_state
+ORDER BY customer_count DESC;
+
+-- Impact on Economy
+
+-- Calculate the percentage increase in the cost of orders from 2017 to 2018 (Jan to Aug only)
+SELECT 
+    (SUM(CASE WHEN strftime('%Y-%m', order_purchase_timestamp) BETWEEN '2018-01' AND '2018-08' THEN payment_value ELSE 0 END) -
+     SUM(CASE WHEN strftime('%Y-%m', order_purchase_timestamp) BETWEEN '2017-01' AND '2017-08' THEN payment_value ELSE 0 END)) / 
+     SUM(CASE WHEN strftime('%Y-%m', order_purchase_timestamp) BETWEEN '2017-01' AND '2017-08' THEN payment_value ELSE 0 END) * 100 AS percentage_increase
+FROM payments
+JOIN orders ON payments.order_id = orders.order_id;
+
+-- Calculate the total and average value of order prices for each state
+SELECT customer_state, SUM(payment_value) AS total_order_value, AVG(payment_value) AS avg_order_value
+FROM payments
+JOIN orders ON payments.order_id = orders.order_id
+JOIN customers ON orders.customer_id = customers.customer_id
+GROUP BY customer_state
+ORDER BY total_order_value DESC;
+
+-- Calculate the total and average value of order freight for each state
+SELECT customer_state, SUM(freight_value) AS total_freight_value, AVG(freight_value) AS avg_freight_value
+FROM order_items
+JOIN orders ON order_items.order_id = orders.order_id
+JOIN customers ON orders.customer_id = customers.customer_id
+GROUP BY customer_state
+ORDER BY total_freight_value DESC;
+
+-- Analysis based on sales, freight and delivery time
+
+-- Calculate delivery time and difference between estimated and actual delivery date
+SELECT order_id, 
+       (julianday(order_delivered_customer_date) - julianday(order_purchase_timestamp)) AS time_to_deliver,
+       (julianday(order_delivered_customer_date) - julianday(order_estimated_delivery_date)) AS diff_estimated_delivery
+FROM orders;
+
+-- Find the top 5 states with the highest and lowest average freight value
+SELECT customer_state, AVG(freight_value) AS avg_freight_value
+FROM order_items
+JOIN orders ON order_items.order_id = orders.order_id
+JOIN customers ON orders.customer_id = customers.customer_id
+GROUP BY customer_state
+ORDER BY avg_freight_value DESC
+LIMIT 5;
+
+SELECT customer_state, AVG(freight_value) AS avg_freight_value
+FROM order_items
+JOIN orders ON order_items.order_id = orders.order_id
+JOIN customers ON orders.customer_id = customers.customer_id
+GROUP BY customer_state
+ORDER BY avg_freight_value ASC
+LIMIT 5;
+
+-- Find the top 5 states with the highest and lowest average delivery time
+SELECT customer_state, AVG(julianday(order_delivered_customer_date) - julianday(order_purchase_timestamp)) AS avg_delivery_time
+FROM orders
+JOIN customers ON orders.customer_id = customers.customer_id
+GROUP BY customer_state
+ORDER BY avg_delivery_time DESC
+LIMIT 5;
+
+SELECT customer_state, AVG(julianday(order_delivered_customer_date) - julianday(order_purchase_timestamp)) AS avg_delivery_time
+FROM orders
+JOIN customers ON orders.customer_id = customers.customer_id
+GROUP BY customer_state
+ORDER BY avg_delivery_time ASC
+LIMIT 5;
+
+-- Find the top 5 states where the order delivery is really fast compared to the estimated date of delivery
+SELECT customer_state, AVG(julianday(order_delivered_customer_date) - julianday(order_estimated_delivery_date)) AS avg_diff_estimated_delivery
+FROM orders
+JOIN customers ON orders.customer_id = customers.customer_id
+GROUP BY customer_state
+ORDER BY avg_diff_estimated_delivery ASC
+LIMIT 5;
+
+-- Analysis based on payments
+
+-- Find the month-on-month number of orders placed using different payment types
+SELECT strftime('%Y-%m', order_purchase_timestamp) AS order_month, payment_type, COUNT(*) AS order_count
+FROM payments
+JOIN orders ON payments.order_id = orders.order_id
+GROUP BY order_month, payment_type
+ORDER BY order_month, payment_type;
+
+-- Find the number of orders placed based on payment installments
+SELECT payment_installments, COUNT(*) AS order_count
+FROM payments
+GROUP BY payment_installments
+ORDER BY order_count DESC;
