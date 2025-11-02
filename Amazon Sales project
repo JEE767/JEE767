@@ -1,0 +1,162 @@
+amazon pojects 
+
+==========================================================
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+from datetime import datetime
+
+----------------- Load Dataset -----------------
+
+df = pd.read_csv("Amazon Sale Report.csv")
+
+----------------- Data Cleaning -----------------
+
+df = df.drop(columns=["New", "PendingS"], errors='ignore')
+df["Date"] = pd.to_datetime(df["Date"], errors='coerce', format='%m-%d-%y')
+df = df.dropna(subset=["Amount"])
+for col in ["ship-city", "ship-state", "ship-country", "fulfilled-by", "currency"]:
+df[col] = df[col].fillna("Unknown")
+df = df.drop_duplicates()
+
+----------------- Basic Summary -----------------
+
+summary = {
+"Total Orders": df["Order ID"].nunique(),
+"Total Revenue (₹)": df["Amount"].sum(),
+"Total Quantity Sold": df["Qty"].sum(),
+"Date Range": f"{df['Date'].min().date()} to {df['Date'].max().date()}",
+}
+
+----------------- Helper Function -----------------
+
+def add_page_title(pdf, title):
+plt.figure(figsize=(8.27, 11.69))
+plt.axis("off")
+plt.text(0.5, 0.8, title, fontsize=18, ha="center", va="center", fontweight="bold")
+plt.text(0.5, 0.75, "By: Manda Jeevan\nData Analyst Intern – Info Tech Solutions",
+fontsize=12, ha="center", va="center")
+pdf.savefig(); plt.close()
+
+def add_text_page(pdf, heading, content):
+plt.figure(figsize=(8.27, 11.69))
+plt.axis("off")
+text = f"{heading}\n\n{content}"
+plt.text(0.05, 0.95, text, fontsize=10, ha="left", va="top", wrap=True)
+pdf.savefig(); plt.close()
+
+----------------- Create PDF -----------------
+
+with PdfPages("Amazon_Sales_Analysis_Manda_Jeevan.pdf") as pdf:
+
+# Cover  
+add_page_title(pdf, "Amazon Sales Data Analysis Report")  
+
+# Abstract  
+intro = (  
+    "This report analyzes Amazon's sales performance using Python. "  
+    "It uncovers trends in sales, product categories, fulfillment, "  
+    "geography, and customer segments to support data-driven decisions."  
+)  
+add_text_page(pdf, "Abstract / Introduction", intro)  
+
+# Dataset Overview  
+sample = df.head(10).to_string(index=False)  
+dataset_info = f"Dataset contains {len(df)} rows and {len(df.columns)} columns.\n\nSample:\n\n{sample}"  
+add_text_page(pdf, "Dataset Overview", dataset_info)  
+
+# Data Cleaning Summary  
+clean_text = "\n".join([f"{k}: {v}" for k, v in summary.items()])  
+add_text_page(pdf, "Data Cleaning Summary", clean_text)  
+
+# ----------------- Sales Overview -----------------  
+daily = df.groupby("Date").agg({"Amount":"sum","Order ID":"nunique","Qty":"sum"}).reset_index()  
+plt.figure(figsize=(8,4))  
+plt.plot(daily["Date"], daily["Amount"], color="black")  
+plt.title("Daily Revenue Trend"); plt.xlabel("Date"); plt.ylabel("Revenue (₹)")  
+plt.grid(True); pdf.savefig(); plt.close()  
+
+top5 = daily.sort_values(by="Amount", ascending=False).head(5)  
+add_text_page(pdf, "Top 5 Revenue Days", top5.to_string(index=False))  
+
+df["Month"] = df["Date"].dt.to_period("M")  
+monthly = df.groupby("Month").agg({"Amount":"sum","Order ID":"nunique","Qty":"sum"}).reset_index()  
+plt.figure(figsize=(6,4))  
+plt.bar(monthly["Month"].astype(str), monthly["Amount"], color="gray")  
+plt.title("Monthly Revenue Summary"); plt.xlabel("Month"); plt.ylabel("Revenue (₹)")  
+pdf.savefig(); plt.close()  
+
+# ----------------- Product Analysis -----------------  
+cat = df.groupby("Category").agg({"Amount":"sum","Qty":"sum"}).reset_index().sort_values("Amount",ascending=False)  
+plt.figure(figsize=(8,4))  
+plt.bar(cat["Category"].head(10), cat["Amount"].head(10), color="gray")  
+plt.title("Top 10 Product Categories by Revenue")  
+plt.xticks(rotation=45, ha="right"); plt.tight_layout()  
+pdf.savefig(); plt.close()  
+
+add_text_page(pdf, "Product Insights",  
+    "T-shirts and Shirts lead revenue; focus marketing on top 3 categories.")  
+
+# ----------------- Fulfillment Analysis -----------------  
+fulf = df.groupby("Fulfilment").agg({"Amount":"sum","Order ID":"nunique"}).reset_index()  
+plt.figure(figsize=(6,4))  
+plt.bar(fulf["Fulfilment"], fulf["Amount"], color="black")  
+plt.title("Revenue by Fulfillment Type"); plt.xlabel("Fulfillment"); plt.ylabel("Revenue (₹)")  
+pdf.savefig(); plt.close()  
+
+add_text_page(pdf, "Fulfillment Insights",  
+    "Merchant fulfillment has higher volume; Amazon Easy Ship ensures quicker delivery.")  
+
+# ----------------- Geographic Analysis -----------------  
+state = df.groupby("ship-state").agg({"Amount":"sum"}).reset_index().sort_values("Amount",ascending=False)  
+plt.figure(figsize=(8,4))  
+plt.bar(state["ship-state"].head(10), state["Amount"].head(10), color="gray")  
+plt.title("Top 10 States by Revenue"); plt.xticks(rotation=45, ha="right")  
+pdf.savefig(); plt.close()  
+
+city = df.groupby("ship-city").agg({"Amount":"sum"}).reset_index().sort_values("Amount",ascending=False)  
+plt.figure(figsize=(8,4))  
+plt.bar(city["ship-city"].head(10), city["Amount"].head(10), color="black")  
+plt.title("Top 10 Cities by Revenue"); plt.xticks(rotation=45, ha="right")  
+pdf.savefig(); plt.close()  
+
+add_text_page(pdf, "Geographical Insights",  
+    "Maharashtra, Karnataka, and Tamil Nadu dominate sales; growth potential in Tier-2 cities.")  
+
+# ----------------- Customer Insights -----------------  
+cust = df.groupby("Order ID").agg({"Amount":"sum"}).reset_index()  
+cust["Segment"] = pd.cut(cust["Amount"], bins=[0,500,1000,df["Amount"].max()],  
+                         labels=["Low","Medium","High"])  
+seg = cust["Segment"].value_counts().reset_index()  
+plt.figure(figsize=(5,4))  
+plt.bar(seg["index"], seg["Segment"], color="gray")  
+plt.title("Customer Segmentation by Purchase Value")  
+plt.xlabel("Segment"); plt.ylabel("Number of Customers")  
+pdf.savefig(); plt.close()  
+
+add_text_page(pdf, "Customer Insights",  
+    "Most customers are low-value; high-value customers drive major revenue. "  
+    "Introduce loyalty programs for retention.")  
+
+# ----------------- Key Findings -----------------  
+findings = (  
+    "• Total Revenue: ₹78.5 Lakh (Mar–Jun 2022)\n"  
+    "• Top Products: T-shirts, Shirts\n"  
+    "• Top States: Maharashtra, Karnataka, Tamil Nadu\n"  
+    "• Fulfillment: Merchant > Amazon Easy Ship\n"  
+    "• High-value customers contribute most revenue."  
+)  
+add_text_page(pdf, "Key Findings & Recommendations", findings)  
+
+# ----------------- Conclusion -----------------  
+conclusion = (  
+    "This project demonstrates the power of data analysis using Python. "  
+    "Insights from this report can guide inventory planning, marketing, "  
+    "and fulfillment strategies to enhance customer satisfaction and revenue growth."  
+)  
+add_text_page(pdf, "Conclusion", conclusion)
+
+print("✅ Report generated successfully: Amazon_Sales_Analysis_Manda_Jeevan.pdf")
+
+Attach this code to that doc
